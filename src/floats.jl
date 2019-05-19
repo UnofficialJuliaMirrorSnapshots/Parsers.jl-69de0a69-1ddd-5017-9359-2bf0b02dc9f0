@@ -1,6 +1,10 @@
 wider(::Type{Int64}) = Int128
 wider(::Type{Int128}) = BigInt
 
+# include a non-inlined version in case of widening (otherwise, all widened cases would fully inline)
+@noinline _typeparser(::Type{T}, source, pos, len, b, code, options::Options{ignorerepeated, Q, debug, S, D, DF}, ::Type{IntType}) where {T <: AbstractFloat, ignorerepeated, Q, debug, S, D, DF, IntType} =
+    typeparser(T, source, pos, len, b, code, options, IntType)
+
 @inline function typeparser(::Type{T}, source, pos, len, b, code, options::Options{ignorerepeated, Q, debug, S, D, DF}, ::Type{IntType}=Int64) where {T <: AbstractFloat, ignorerepeated, Q, debug, S, D, DF, IntType}
     startpos = pos
     origb = b
@@ -18,10 +22,11 @@ wider(::Type{Int128}) = BigInt
         code |= INVALID | EOF
         @goto done
     end
+    b = peekbyte(source, pos)
     if b == options.decimal
         @goto decimalcheck
     end
-    b = peekbyte(source, pos) - UInt8('0')
+    b -= UInt8('0')
     if debug
         println("float 1) $(b + UInt8('0'))")
     end
@@ -151,7 +156,7 @@ wider(::Type{Int128}) = BigInt
         b > 0x09 && break
         if overflows(IntType) && digits > overflowval(IntType)
             fastseek!(source, startpos)
-            return typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
+            return _typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
         end
     end
     b += UInt8('0')
@@ -197,7 +202,7 @@ wider(::Type{Int128}) = BigInt
             b > 0x09 && break
             if overflows(IntType) && digits > overflowval(IntType)
                 fastseek!(source, startpos)
-                return typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
+                return _typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
             end
         end
     end
@@ -253,7 +258,7 @@ wider(::Type{Int128}) = BigInt
             end
             if overflows(IntType) && exp > overflowval(IntType)
                 fastseek!(source, startpos)
-                return typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
+                return _typeparser(T, source, startpos, len, origb, code, options, wider(IntType))
             end
         end
     else
