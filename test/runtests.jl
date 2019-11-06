@@ -153,6 +153,7 @@ testcases = [
     # ignorerepeated
     (str="1a,,", kwargs=(ignorerepeated=true,), x=1, code=(OK | DELIMITED | INVALID_DELIMITER), vpos=1, vlen=2, tlen=4),
     (str="1a,,2", kwargs=(ignorerepeated=true,), x=1, code=(OK | DELIMITED | INVALID_DELIMITER), vpos=1, vlen=2, tlen=4),
+    (str="1,\n", kwargs=(ignorerepeated=true, delim=UInt8(',')), x=1, code=(OK | DELIMITED | NEWLINE | EOF), vpos=1, vlen=1, tlen=3),
 ];
 
 for useio in (false, true)
@@ -384,6 +385,11 @@ x, code, vpos, vlen, tlen = Parsers.xparse(Float64, "\"\"", 1, 2)
 
 x, code, vpos, vlen, tlen = Parsers.xparse(String, "\"\"", 1, 2)
 @test Parsers.sentinel(code)
+
+@test_throws ArgumentError Parsers.Options(delim=' ')
+
+# #38
+@test Parsers.parse(Date, "25JUL1985", Parsers.Options(dateformat="dduuuyyyy")) == Date(1985, 7, 25)
 
 end # @testset "misc"
 
